@@ -39,4 +39,6 @@ void draw() {
     frameIndex++;
     if (frameIndex > 3) frameIndex = 0; //2 second timer for the frames
   }
+  
+  saveFrame("output/frame####.png");
 }
