@@ -4,7 +4,7 @@ float powerX = 123;
 float powerY = 670;
 float powerR = 80;
 
-//Power button height, width, and radius.
+boolean buttonClicked = false;
 
 void setup() {
   
@@ -19,6 +19,12 @@ void draw() {
   image (drumbg, 0, 0);
   strokeWeight (2);
   
+  if (buttonClicked == true){
+    fill (255, 0, 0);
+  } else {
+    fill (255, 175, 175);
+  }
+
   buttonPress(79, 198);
   circle (79, 198, 58);
   //circle (153, 198, 58);
@@ -41,17 +47,11 @@ void mousePressed(){
   
 }
 
-//Exits the program when the power button is clicked.
-
 void buttonPress (int buttonX, int buttonY) {
   
   float buttonD = dist (mouseX, mouseY, buttonX, buttonY);
 
-  if (buttonD < 30) {
-    fill (255, 0, 0);
-  } else {
-    fill (255, 175, 175);
+  if (buttonD < 30 && mousePressed){
+    buttonClicked = !buttonClicked;
   }  
 }
-
-//Function for each button being pushed.
