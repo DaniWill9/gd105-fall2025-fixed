@@ -5,6 +5,10 @@ SoundFile one;
 SoundFile two;
 SoundFile three;
 SoundFile four;
+SoundFile five;
+SoundFile six;
+SoundFile seven;
+SoundFile eight;
 
 //Background image.
 PImage drumbg;
@@ -41,36 +45,44 @@ int volDownHighlightTime = -1000;
 int highlightDuration = 100;
 
 //Row, column, and button variables.
-int rows = 4;
+int rows = 8;
 int cols = 16;
 boolean[][] buttons = new boolean[rows][cols];
 
 //Button colors when clicked.
 int[] rowColors = {
   
-  color (78, 148, 79),
-  color (136, 176, 75),
-  color (179, 159, 114),
-  color (217, 140, 75)
+  color (199, 82, 42),
+  color (229, 193, 133),
+  color (240, 218, 165),
+  color (251, 242, 196),
+  color (184, 205, 171),
+  color (116, 168, 146),
+  color (0, 133, 133),
+  color (0, 67, 67)
   
 };
 
 //Button colors when unclicked.
 int[] rowInactiveColors = {
   
-  color (150, 200, 150),
-  color (200, 220, 150),
-  color (250, 230, 180),
-  color (240, 180, 140)
+  color (203, 165, 153),
+  color (230, 216, 194),
+  color (242, 237, 223),
+  color (252, 250, 241),
+  color (233, 243, 226),
+  color (209, 239, 226),
+  color (144, 244, 244),
+  color (115, 158, 158)
   
 };
 
 //Initial start positions and spacing between buttons.
 float startX = 79;
-float startY = 198;
+float startY = 190;
 float spacingX = 74;
-float spacingY = 92;
-float circleSize = 58;
+float spacingY = 43;
+float circleSize = 33;
 
 int currentColumn = 0;
 int interval = 200;
@@ -83,6 +95,10 @@ void setup() {
   two = new SoundFile(this, "sound_two.wav");
   three = new SoundFile(this, "sound_three.mp3");
   four = new SoundFile(this, "sound_four.wav");
+  five = new SoundFile(this, "sound_five.mp3");
+  six = new SoundFile(this, "sound_six.mp3");
+  seven = new SoundFile(this, "sound_seven.wav");
+  eight = new SoundFile(this, "sound_eight.wav");
   
   size (1280, 800);
   drumbg = loadImage ("drum_image.png");
@@ -93,6 +109,15 @@ void draw() {
 
   background (255);
   image (drumbg, 0, 0);
+  
+  one.amp(volume);
+  two.amp(volume);
+  three.amp(volume);
+  four.amp(volume);
+  five.amp(volume);
+  six.amp(volume);
+  seven.amp(volume);
+  eight.amp(volume);
   
   //Puts white highlight around pause button when not sequence is not running.
   if (!isPlaying) {
@@ -128,12 +153,6 @@ void draw() {
     popStyle ();
   }
   
-  //Setting base volume to buttons.
-  one.amp(volume);
-  two.amp(volume);
-  three.amp(volume);
-  four.amp(volume);
-  
   //Sequence loop activate if it is playing.
   if (isPlaying) {
     
@@ -152,6 +171,10 @@ void draw() {
           case 1: two.play(); break;
           case 2: three.play(); break;
           case 3: four.play(); break;
+          case 4: five.play(); break;
+          case 5: six.play(); break;
+          case 6: seven.play(); break;
+          case 7: eight.play(); break;
           
         }
       }
@@ -161,10 +184,15 @@ void draw() {
   
   //Visual rectangle for the sequence loop.
   noStroke();
-  fill (76, 221, 18, 60);
+  fill (30, 36, 39, 60);
   float columnX = startX + (currentColumn * spacingX);
   rectMode (CENTER);
-  rect (columnX, height / 2, 70, height);
+  rect (columnX, height / 2 - 62, 70, 387);
+  
+  //Drawing the stars on the top of the image when it lands on that specific column.
+  float starX = startX + currentColumn * spacingX;
+  float starY = startY - 125;
+  drawStar (starX, starY, 13);
   
   for (int r=0; r < rows; r++) {
     
@@ -172,10 +200,14 @@ void draw() {
       
       if (buttons[r][c]) {
         
+        stroke(0);
+        strokeWeight(2);
         fill (rowColors[r]);
         
       } else {
         
+        stroke(57, 70, 77);
+        strokeWeight(2);
         fill (rowInactiveColors[r]);
       }
       
@@ -266,4 +298,34 @@ void mousePressed() {
       }
     }
   }
+}
+
+//A function for a mini star drawing.
+void drawStar (float x, float y, float radius) {
+  
+  pushStyle ();
+  
+  noStroke ();
+  for (float i = 5; i >= 1; i -= 0.5) {
+    float glowR = radius + i * 1;
+    float alpha = 8 * i;
+    fill (255, 255, 255, alpha);
+    drawStarShape (x, y, glowR);
+  }
+  
+  fill (255);
+  drawStarShape (x, y, radius);
+  
+  popStyle();
+}
+
+void drawStarShape (float x, float y, float radius) {
+  
+  beginShape();
+  for (int i = 0; i < 10; i++) {
+    float angle = TWO_PI * i / 10 - PI / 2;
+    float r = (i % 2 == 0) ? radius : radius * 0.4;
+    vertex (x + cos(angle) * r, y + sin(angle) * r);
+  }
+  endShape(CLOSE);
 }
