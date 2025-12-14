@@ -1,53 +1,53 @@
-//Variables for different screens/states.
+import processing.sound.*;
+SoundFile correctSound;
+SoundFile wrongSound;
+SoundFile gameMusic;
+
 int TITLE = 0;
 int GAME = 1;
 int GAMEOVER = 2;
 int ENTER_INITIALS = 3;
-
 int gameState = TITLE;
+int CONTINUE = 4;
 
-//Image variables for all sprites in-game (character, arrows, etc).
 PImage idleMC, mistakeMC, leftDanceMC, rightDanceMC, upDanceMC, downDanceMC;
 PImage arrowUp, arrowDown, arrowLeft, arrowRight;
 PImage heartFull, heartEmpty, starPowerup, danceFloor;
 
-//Array list for the arrow prompts in-game.
 ArrayList<Prompt> prompts = new ArrayList<Prompt>();
 
-//Variables for miscellaneous game values (hearts, timer, etc).
 int lives = 3;
 int maxLives = 3;
 int displayTime = 0;
 int score = 0;
-
 boolean powerUpAvailable = false;
 boolean powerUpActive = false;
-
-//Power-up timer variables (starts at 0, lasts 5 seconds).
 int powerUpTimer = 0;
 int powerUpDuration = 300;
 
-//Highscore variables (blank space for initials, initial length, etc).
 Table highscores;
 String playerInitials = "";
 int maxInitialsLength = 3;
-
-//Ignore first key press after (re)starting game.
 boolean ignoreNextKey = false;
 
 boolean underscoreVisible = true;
 int underscoreTimer = 0;
 int underscoreSpeed = 30;
-
 float shakeX = 0;
 float shakeY = 0;
 int shakeTimer = 0;
+int credits = 0;
+
+int continueTimer = 0;
+boolean continueCreditInserted = false;
+
+final int GAME_WIDTH = 800;
+final int GAME_HEIGHT = 785;
 
 void setup() {
-  
-  size(800, 800);
+  fullScreen();
+  noSmooth();
 
-  //All image sprites being loaded.
   idleMC = loadImage("idleMC.png");
   mistakeMC = loadImage("mistakeMC.png");
   leftDanceMC = loadImage("leftDanceMC.png");
@@ -64,210 +64,226 @@ void setup() {
   heartEmpty = loadImage("heartEmpty.png");
   starPowerup = loadImage("star.png");
   danceFloor = loadImage("dancefloor.png");
-  
+
   try {
-    
-    //Loading the leaderboard right as the game starts.
     highscores = loadTable("highscores.csv", "header,csv");
-    
   } catch (Exception e) {
-    
     highscores = new Table();
     highscores.addColumn("initials");
     highscores.addColumn("score");
     saveTable(highscores, "data/highscores.csv");
-    
   }
+
+  correctSound = new SoundFile(this, "correctarrow.mp3");
+  wrongSound = new SoundFile(this, "mistakearrow.wav");
+  gameMusic = new SoundFile(this, "gamemusic.mp3");
+  gameMusic.amp(0.1);
   
 }
 
 void draw() {
-  
+  float scaleFactor = min((float) width / GAME_WIDTH, (float) height / GAME_HEIGHT);
+  float scaledWidth = GAME_WIDTH * scaleFactor;
+  float scaledHeight = GAME_HEIGHT * scaleFactor;
+  float offsetX = (width - scaledWidth) / 2;
+  float offsetY = (height - scaledHeight) / 2;
+
+  background(0);
+  noStroke();
+  fill(0);
+  rect(0, 0, width, offsetY);
+  rect(0, height - offsetY, width, offsetY);
+  rect(0, 0, offsetX, height);
+  rect(width - offsetX, 0, offsetX, height);
+
+  pushMatrix();
+  translate(offsetX, offsetY);
+  scale(scaleFactor);
+
   underscoreTimer++;
-  
   if (underscoreTimer >= underscoreSpeed) {
-    
     underscoreVisible = !underscoreVisible;
     underscoreTimer = 0;
-    
   }
-  
-  //If statements that draw the correct screen if the game state equals that screen.
+
   if (gameState == TITLE) drawTitleScreen();
   else if (gameState == GAME) drawGameScreen();
   else if (gameState == GAMEOVER) drawGameOverScreen();
   else if (gameState == ENTER_INITIALS) drawEnterInitialsScreen();
   
+  if (gameState == CONTINUE) {
+  drawContinueScreen();
+  if (!continueCreditInserted) {
+    continueTimer--;
+    if (continueTimer <= 0) gameState = ENTER_INITIALS;
+  }
+}
+
+  popMatrix();
+}
+
+void drawCredits() {
+  pushStyle();
+  fill(255);
+  textAlign(LEFT, BOTTOM);
+  textSize(16);
+  text("CREDITS: " + credits, 10, GAME_HEIGHT - 10);
+  popStyle();
 }
 
 void drawTitleScreen() {
+  if (gameMusic.isPlaying()) gameMusic.stop();
   
-  //Simple title + game start prompt for players.
-  background(0);
-  textAlign(CENTER);
-  textSize(40);
   fill(255);
-  text("GROOVE STEP!", width/2, height/2);
-  text("Press P to Insert Coin", width/2, height/2 + 60);
+  textAlign(CENTER, CENTER);
+  textSize(40);
+  text("GROOVE STEP!", GAME_WIDTH/2, GAME_HEIGHT/2);
   
+  textSize(24);
+  if (credits == 0) {
+    text("INSERT COIN (P)", GAME_WIDTH/2, GAME_HEIGHT/2 + 60);
+  } else {
+    text("PRESS SPACE TO START", GAME_WIDTH/2, GAME_HEIGHT/2 + 60);
+  }
+
+  drawCredits();
 }
 
 void drawGameScreen() {
-  
-  background(0);
+  drawCredits();
   image(danceFloor, 0, 0);
-  
+
   shakeScreen();
   pushMatrix();
-  translate (shakeX, shakeY);
+  translate(shakeX, shakeY);
+  
+  int heartSpacing = 50;
 
-  //Duplicating the hearts/lives so that there's three of them.
-  for (int i=0; i<maxLives; i++){
-    
-    //Prompt that determines whether the heart is full or empty (visually).
-    if (i < lives) image(heartFull, -100*i, 0);
-    else image(heartEmpty, -100*i, 0);
-    
+  for (int i=0; i<maxLives; i++) {
+    int heartX = 10 + i * heartSpacing;
+    int heartY = 10;
+    if (i < lives) image(heartFull, heartX, heartY);
+    else image(heartEmpty, heartX, heartY);
   }
 
-  //The score on the top-left.
   fill(255);
   textAlign(LEFT, TOP);
   textSize(32);
-  text("Score: " + score, 10, 10);
+  text("Score: " + score, 10, 50);
 
-  //Creating the power-up.
-  if (powerUpAvailable) {
-    
-    image(starPowerup, 0, 0);
-    
-  }
+  if (powerUpAvailable) image(starPowerup, GAME_WIDTH - 60, 10);
 
-  //Character idle sprite placement.
-  image(idleMC, 0, 0);
+  image(idleMC, GAME_WIDTH/2 - idleMC.width/2, GAME_HEIGHT/2 - idleMC.height/2);
 
-  //Power-up timer countdown and bar.
   if (powerUpActive) {
-    
-    //Decrease width of power-up timer bar.
     powerUpTimer--;
-    float puBarWidth = map(powerUpTimer, 0, powerUpDuration, 0, width * 0.95);
+    float puBarWidth = map(powerUpTimer, 0, powerUpDuration, 0, GAME_WIDTH * 0.95);
     float puBarHeight = 15;
     fill(255, 255, 0);
-    rect((width - puBarWidth) / 2, height - 40 - puBarHeight, puBarWidth, puBarHeight);
+    rect((GAME_WIDTH - puBarWidth)/2, GAME_HEIGHT - 40 - puBarHeight, puBarWidth, puBarHeight);
 
     if (powerUpTimer <= 0) {
-      
-      //Once the timer for the power-up runs out, the power-up is deactivated.
       powerUpActive = false;
       powerUpTimer = 0;
-      
     }
-    
   }
 
-  //Arrow functions.
-  if (prompts.size() == 0) {
-    
-    spawnArrow();
-    
-  }
+  if (prompts.size() == 0) spawnArrow();
 
   for (int i = prompts.size()-1; i >= 0; i--) {
-    
     Prompt p = prompts.get(i);
     p.update();
-    p.display();
+    
+    float arrowX = GAME_WIDTH/2 - p.sprite.width/2;
+    float arrowY = 0;
+    image (p.sprite, arrowX, arrowY);
 
-    //Timer.
-    float barWidth = map(p.lifetime, 0, 120, 0, width*0.95);
+    float barWidth = map(p.lifetime, 0, 120, 0, GAME_WIDTH*0.95);
     float barHeight = 20;
     fill(0, 255, 0);
-    rect((width-barWidth)/2, height-barHeight-10, barWidth, barHeight);
+    rect((GAME_WIDTH - barWidth)/2, GAME_HEIGHT - barHeight - 10, barWidth, barHeight);
 
-    //If the player misses an arrow, remove a life.
     if (!p.active && p.lifetime <= 0) {
-      
       prompts.remove(i);
+      idleMC = mistakeMC;
+      displayTime = 15;
+      wrongSound.play();
+      shakeTimer = 3;
       lives--;
-      if (lives <= 0) gameState = ENTER_INITIALS;
+      
+      if (lives <= 0) {
+        gameMusic.stop();
+        gameState = CONTINUE;
+        continueTimer = 600;
+      }
       
     }
-    
   }
 
   if (displayTime > 0) displayTime--;
-  
   else idleMC = loadImage("idleMC.png");
-  
+
   popMatrix();
-  
 }
 
 void keyPressed() {
   
-  if ((gameState == TITLE || gameState == GAMEOVER) && (key == 'p' || key == 'P')) {
-    
-    resetGame();
-    gameState = GAME;
-    ignoreNextKey = true;
-    return;
-    
+  if (gameState == CONTINUE) {
+    if (!continueCreditInserted && (key == 'p' || key == 'P') && credits > 0) {
+      credits--;
+      continueCreditInserted = true;
+      continueTimer = 0;
+      return;
+    } 
+    else if (continueCreditInserted && key == ' ') {
+      resetGame();
+      gameState = GAME;
+      if (!gameMusic.isPlaying()) gameMusic.loop();
+      continueCreditInserted = false;
+      return;
+    }
   }
 
+  if (key == 'p' || key == 'P') { credits++; return; }
+
   if (gameState == ENTER_INITIALS) {
-    
-    if (key == BACKSPACE && playerInitials.length() > 0) {
-      
-      playerInitials = playerInitials.substring(0, playerInitials.length()-1);
-      
-    } else if ((key >= 'A' && key <= 'Z' || key >= 'a' && key <= 'z') && playerInitials.length() < maxInitialsLength) {
-      
-      playerInitials += Character.toUpperCase(key);
-      
-    } else if (key == ' ') {
-      
+    if (key == BACKSPACE && playerInitials.length() > 0) playerInitials = playerInitials.substring(0, playerInitials.length()-1);
+    else if ((key >= 'A' && key <= 'Z' || key >= 'a' && key <= 'z') && playerInitials.length() < maxInitialsLength) playerInitials += Character.toUpperCase(key);
+    else if (key == ' ') {
       TableRow newRow = highscores.addRow();
       newRow.setString("initials", playerInitials);
       newRow.setInt("score", score);
-
       saveTable(highscores, "data/highscores.csv");
-
-      resetGame();
-      
       gameState = GAMEOVER;
-      
     }
-    
     return;
-    
+  }
+
+  if (gameState == TITLE && key == ' ' && credits > 0) {
+    credits--; resetGame(); gameState = GAME;
+    if (!gameMusic.isPlaying()) gameMusic.loop();
+    ignoreNextKey = true; return;
+  }
+
+  if (gameState == GAMEOVER && key == ' ' && credits > 0) {
+    credits--; resetGame(); gameState = GAME;
+    if (!gameMusic.isPlaying()) gameMusic.loop();
+    ignoreNextKey = true; return;
   }
 
   if (gameState == GAME && powerUpAvailable && key == ' ') {
-    
-    powerUpActive = true;
-    powerUpAvailable = false;
-    powerUpTimer = powerUpDuration;
-    return;
-    
+    powerUpActive = true; powerUpAvailable = false; powerUpTimer = powerUpDuration; return;
   }
 
-  if (ignoreNextKey) {
-    
-    ignoreNextKey = false;
-    return;
-    
-  }
+  if (ignoreNextKey) { ignoreNextKey = false; return; }
 
   if (gameState == GAME && prompts.size() > 0) {
-    
     Prompt p = prompts.get(0);
     boolean correct = false;
-    if (key == ' ') return;
 
-    if ((key == 'w' || key == 'W') && p.type.equals("up")) { correct = true; idleMC = upDanceMC; } 
-    else if ((key == 's' || key == 'S') && p.type.equals("down")) { correct = true; idleMC = downDanceMC; } 
-    else if ((key == 'a' || key == 'A') && p.type.equals("left")) { correct = true; idleMC = leftDanceMC; } 
+    if ((key == 'w' || key == 'W') && p.type.equals("up")) { correct = true; idleMC = upDanceMC; }
+    else if ((key == 's' || key == 'S') && p.type.equals("down")) { correct = true; idleMC = downDanceMC; }
+    else if ((key == 'a' || key == 'A') && p.type.equals("left")) { correct = true; idleMC = leftDanceMC; }
     else if ((key == 'd' || key == 'D') && p.type.equals("right")) { correct = true; idleMC = rightDanceMC; }
 
     displayTime = 15;
@@ -275,112 +291,93 @@ void keyPressed() {
     if (correct) {
       
       score += (powerUpActive) ? 10 : 5;
-      p.active = false;
+      correctSound.play();
       prompts.remove(0);
       spawnArrow();
       if (score % 200 == 0) powerUpAvailable = true;
       
-    } else if (p.active) {
+    } else {
       
       idleMC = mistakeMC;
+      wrongSound.play();
       shakeTimer = 3;
       lives--;
-      if (lives <= 0) gameState = ENTER_INITIALS;
       
+      if (lives <= 0) {
+        
+        gameMusic.stop();
+        gameState = CONTINUE;
+        continueTimer = 600;
+        
+      }
     }
-    
   }
-  
 }
 
 void spawnArrow() {
-  
   String[] types = {"up", "down", "left", "right"};
   String randomType = types[int(random(4))];
-  prompts.add(new Prompt(randomType, 0, 0));
-  
+  prompts.add(new Prompt(randomType));
 }
 
 void drawGameOverScreen() {
-  
-  background(0);
+  if (gameMusic.isPlaying()) gameMusic.stop();
+
   fill(255, 0, 0);
   textAlign(CENTER);
   textSize(40);
-  text("GAME OVER", width/2, height/2 - 100);
+  text("GAME OVER", GAME_WIDTH/2, GAME_HEIGHT/2 - 100);
 
   int rowCount = highscores.getRowCount();
   TableRow[] topRows = new TableRow[min(5, rowCount)];
-
   TableRow[] allRows = new TableRow[rowCount];
   for (int i = 0; i < rowCount; i++) allRows[i] = highscores.getRow(i);
 
   for (int i = 0; i < topRows.length; i++) {
-    
     int maxIndex = -1;
     int maxScore = -1;
-    
     for (int j = 0; j < allRows.length; j++) {
-      
       if (allRows[j] != null && allRows[j].getInt("score") > maxScore) {
-        
         maxScore = allRows[j].getInt("score");
         maxIndex = j;
-        
       }
-      
     }
-    
-    if (maxIndex != -1) {
-      
-      topRows[i] = allRows[maxIndex];
-      allRows[maxIndex] = null;
-      
-    }
-    
+    if (maxIndex != -1) { topRows[i] = allRows[maxIndex]; allRows[maxIndex] = null; }
   }
 
   fill(255);
   textAlign(LEFT, TOP);
   textSize(24);
-  text("Top 5 Player Scores:", width/2 - 100, height/2 - 50);
-  
+  text("Top 5 Player Scores:", GAME_WIDTH/2 - 100, GAME_HEIGHT/2 - 50);
+
   for (int i = 0; i < topRows.length; i++) {
-    
     TableRow r = topRows[i];
-    text((i+1) + ". " + r.getString("initials") + " - " + r.getInt("score"), width/2 - 100, height/2 - 20 + i*30);
-    
+    text((i+1) + ". " + r.getString("initials") + " - " + r.getInt("score"), GAME_WIDTH/2 - 100, GAME_HEIGHT/2 - 20 + i*30);
   }
 
   textSize(20);
   textAlign(CENTER);
-  text("Press P to play again", width/2, height - 60);
-  
+  text("Press SPACE to play again", GAME_WIDTH/2, GAME_HEIGHT - 60);
+
+  drawCredits();
 }
 
 void drawEnterInitialsScreen() {
-  
-  background(0);
   fill(255);
   textAlign(CENTER);
   textSize(32);
-  text("NEW HIGH SCORE: " + score, width/2, height/2 - 40);
-  text("ENTER YOUR INITIALS:", width/2, height/2);
-  
+  text("NEW HIGH SCORE: " + score, GAME_WIDTH/2, GAME_HEIGHT/2 - 40);
+  text("ENTER YOUR INITIALS:", GAME_WIDTH/2, GAME_HEIGHT/2);
+
   String displayInitials = playerInitials;
-  
-  if (underscoreVisible && playerInitials.length() < maxInitialsLength) {
-    
-    displayInitials += "_";
-    
-  }
-  
-  text (displayInitials, width/2, height/2 + 40);
-  
+  if (underscoreVisible && playerInitials.length() < maxInitialsLength) displayInitials += "_";
+
+  text(displayInitials, GAME_WIDTH/2, GAME_HEIGHT/2 + 40);
+
+  drawCredits();
 }
 
 void resetGame() {
-  
   lives = maxLives;
   score = 0;
   prompts.clear();
@@ -389,58 +386,64 @@ void resetGame() {
   powerUpTimer = 0;
   playerInitials = "";
   ignoreNextKey = false;
-  
 }
 
-void shakeScreen () {
-  
+void shakeScreen() {
   if (shakeTimer > 0) {
-    
-    shakeX = random (-5, 5);
-    shakeY = random (-5, 5);
+    shakeX = random(-5, 5);
+    shakeY = random(-5, 5);
     shakeTimer--;
+  } else {
+    shakeX = 0;
+    shakeY = 0;
+  }
+}
+
+void drawContinueScreen() {
+  
+  background (0);
+  fill (255);
+  textAlign (CENTER, CENTER);
+  textSize (40);
+  text ("CONTINUE?", GAME_WIDTH/2, GAME_HEIGHT/2 - 40);
+  
+  textSize (24);
+  
+  if (!continueCreditInserted) {
+    
+    text ("INSERT COIN (P) TO CONTINUE", GAME_WIDTH/2, GAME_HEIGHT/2 + 20);
+    text("Time left: " + continueTimer/60, GAME_WIDTH/2, GAME_HEIGHT/2 + 60);
     
   } else {
     
-    shakeX = 0;
-    shakeY = 0;
+    text("PRESS SPACE TO CONTINUE", GAME_WIDTH/2, GAME_HEIGHT/2 + 20);
     
   }
+  
+  drawCredits();
   
 }
 
 class Prompt {
-  
   PImage sprite;
   String type;
-  float x, y;
   boolean active = true;
   int lifetime = 120;
 
-  Prompt(String type, float x, float y) {
-    
-    this.type = type;
-    this.x = x;
-    this.y = y;
-
+  Prompt(String type) {
+    this.type = type; 
     if (type.equals("up")) sprite = arrowUp;
     else if (type.equals("down")) sprite = arrowDown;
     else if (type.equals("left")) sprite = arrowLeft;
     else if (type.equals("right")) sprite = arrowRight;
-    
   }
 
   void update() {
-    
     lifetime--;
     if (lifetime <= 0) active = false;
-    
   }
 
   void display() {
-    
-    image(sprite, 0, 0);
-    
+    image(sprite, GAME_WIDTH/2 - sprite.width/2, 150);
   }
-  
 }
